@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Temperature and Humidity Data</title>
+    <title>Office Dashboard</title>
 
     <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
@@ -26,29 +26,6 @@
         <p>Average Temperature (Last 5 days): <span id="averageTemperature5Days">--</span> °C</p>
     </div>
 
-    <div class="bus-info">
-        <h2>Next Campus Linc Bus at LAC</h2>
-        <p id="next-departure">Loading next departure...</p>
-        <p id="next-arrival">Loading next arrival...</p>
-    </div>
-
-    <div class="info">
-        <h2>Latest BBC News</h2>
-        <ul id="bbcNewsList"></ul>
-    </div>
-
-    <!-- <div class="info" id="departuresInfo">
-        <h2>Latest Departures from Humberside Airport</h2>
-        <ul id="departuresList">
-            <li>Loading departures...</li>
-        </ul>
-    </div> -->
-
-    <div class="info" id="weatherInfo">
-        <h2>Weather Information</h2>
-        <p>Loading weather data...</p>
-    </div>
-
     <div class="info" id="gone-pub" style="display: none; text-align: center; font-size: 2em; padding: 20px;">
         Gone Pub 🍻
     </div>
@@ -59,8 +36,37 @@
     <div class="chart-container" id="humidityChart"></div>
 </div>
 
+<div class="info-container">
+    <div class="bus-info, info">
+        <h2>Campus Linc Shuttle Bus</h2>
+        <p id="next-departure">Loading next departure...</p>
+    </div>
+
+    <div class="info">
+        <h2>Latest BBC News</h2>
+        <ul id="newsList"></ul>
+    </div>
+
+    <!-- <div class="info" id="departuresInfo">
+        <h2>Humberside Airport Departures</h2>
+        <ul id="departuresList">
+            <li>Loading departures...</li>
+        </ul>
+    </div> -->
+
+    <div class="info" id="weatherInfo">
+        <h2>Weather Information</h2>
+        <p>Loading weather data...</p>
+    </div>
+
+    <div class="info" id="trainDepartures">
+        <h2>Train Departures</h2>
+        <p>Loading departures...</p>
+    </div>
+</div>
+
 <footer>
-    &copy; 2024 Duck Ltd.
+    &copy; 2024 Ducking Duck Ltd.
     
     <img src="{{ url_for('static', filename='duck.png') }}" height="15px">
 </footer>
@@ -96,39 +102,48 @@
 
     // Bus schedule logic
     const departures = ["07:30", "08:30", "13:00", "16:40", "17:40"];
-    const arrivals = ["08:25", "12:55", "16:35", "17:35"];
 
     function getNextBus() {
         const now = new Date();
         const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes since midnight
 
+        const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+
+        // Check if it's the weekend (Saturday or Sunday)
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            document.getElementById("next-departure").textContent = `Next Departure: ${departures[0]} (Monday)`;
+            return;
+        }
+
+        // Loop through the departure times to find the next bus
         for (let i = 0; i < departures.length; i++) {
             const [depHour, depMin] = departures[i].split(':').map(Number);
             const depTime = depHour * 60 + depMin;
 
             if (depTime >= currentTime) {
                 document.getElementById("next-departure").textContent = `Next Departure: ${departures[i]}`;
-                document.getElementById("next-arrival").textContent = 
-                    arrivals[i] ? `Next Arrival: ${arrivals[i]}` : "Next Arrival: N/A";
                 return;
             }
         }
 
-        // If no more buses today, show the first departure of tomorrow
-        document.getElementById("next-departure").textContent = `Departure: ${departures[0]} (Tomorrow)`;
-        document.getElementById("next-arrival").textContent = 
-            arrivals[0] ? `Arrival: ${arrivals[0]}` : "Next Arrival: N/A";
+        // If no more buses today, show the first departure of the next week (Monday)
+        if (dayOfWeek === 5) { // If it's Friday
+            document.getElementById("next-departure").textContent = `Next Departure: ${departures[0]} (Monday)`;
+        } else { // If it's any weekday other than Friday
+            document.getElementById("next-departure").textContent = `Next Departure: ${departures[0]} (Tomorrow)`;
+        }
     }
 
     // Load bus times every 10 minutes (600,000 milliseconds)
     setInterval(getNextBus, 600000); // Adjust interval as needed
     getNextBus(); // Initial load
 
-    function loadBBCNews() {
+
+    function loadNews() {
         fetch('/news')
             .then(response => response.json())
             .then(data => {
-                const newsList = document.getElementById('bbcNewsList');
+                const newsList = document.getElementById('newsList');
                 newsList.innerHTML = '';
 
                 if (data.error) {
@@ -147,9 +162,9 @@
             });
     }
 
-    // Load the BBC news on page load
-    setInterval(loadBBCNews, 60000);
-    loadBBCNews();
+    // Load the news on page load
+    setInterval(loadNews, 60000);
+    loadNews();
 
     function loadWeather(cityId) {
         fetch(`/weather/${cityId}`)
@@ -162,19 +177,29 @@
                     return;
                 }
 
+                // Check if the weather ID is 800 clear sky
+                const additionalImage = data.id === 800 ? 
+                    '<img src="{{ url_for('static', filename='sun.jpg') }}" alt="${data.description}" />' : '';
+
+                // <h2>Weather Information</h2>
+                // <p>Temperature: ${data.temperature} °C</p>
+                // <p>Condition: ${data.description}</p>    
+                //<img src="http://openweathermap.org/img/wn/${data.icon}.png" alt="${data.description}" />
+
                 weatherInfo.innerHTML = `
-                    <p>City: ${data.city}</p>
-                    <p>Temperature: ${data.temperature} °C</p>
-                    <p>Condition: ${data.description}</p>
-                    <img src="http://openweathermap.org/img/wn/${data.icon}.png" alt="${data.description}" />
+                    <h2>Weather Information</h2>
+                    <p>${data.temperature} °C - ${data.description}</p>
+                    <h2>Rob Forecast</h2>
+                    <img src="{{ url_for('static', filename='rain.jpg') }}" alt="${data.description}" />
+                    ${additionalImage}
                 `;
             })
             .catch(error => console.error('Error fetching weather:', error));
     }
 
     // Load weather every 10 minutes (600,000 milliseconds)
-    setInterval(() => loadWeather(2644487), 600000); // London city ID
-    loadWeather(2644487); // Initial load
+    setInterval(() => loadWeather('Lincoln,GB'), 600000);
+    loadWeather('Lincoln,GB'); // Initial load
 
     function checkPubTime() {
         const now = new Date();
@@ -196,8 +221,55 @@
     setInterval(checkPubTime, 60000);
     checkPubTime(); // Initial check when the page loads
 
+    function loadTrainDepartures(departureStation = 'LCN') {
+        fetch(`/train_departures/${departureStation}`)
+            .then(response => response.json())
+            .then(data => {
+                const trainDepartures = document.getElementById('trainDepartures');
+
+                if (data.error) {
+                    trainDepartures.innerHTML = `<p>Error loading departures: ${data.error}</p>`;
+                    return;
+                }
+
+                let departuresHtml = `
+                    <h2>Train Departures from ${data.station_name}</h2>
+                    <table id="trainSchedule">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Destination</th>
+                            <th>Platform</th>
+                            <th>Expected</th>
+                            <th>Operator</th>
+                        </tr>
+                    </thead>
+                `;
+                departuresHtml += '<tbody>';
+                data.departures.forEach(departure => {
+                    departuresHtml += `
+                        <tr>
+                            <td>${departure.std}</td>
+                            <td>${departure.destination_name}</td>
+                            <td>${departure.platform}</td>
+                            <td>${departure.etd}</td>
+                            <td>${departure.operator}</td>
+                        </tr>
+                    `;
+                });
+                departuresHtml += '</tbody></table>';
+
+                trainDepartures.innerHTML = departuresHtml;
+            })
+            .catch(error => console.error('Error fetching departures:', error));
+    }
+
+    // Load train departures every 10 minutes (600,000 milliseconds)
+    setInterval(() => loadTrainDepartures('LCN'), 600000);
+    loadTrainDepartures('LCN'); // Initial load
+
     // function loadDepartures() {
-    //     fetch('/departures')
+    //     fetch('/departures_airport')
     //         .then(response => response.json())
     //         .then(data => {
     //             const departuresList = document.getElementById('departuresList');

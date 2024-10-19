@@ -1,6 +1,5 @@
 # Don't include venv stuff
 .patch
-
-plot.png
-static/rain.jpg
-static/sun.jpg
+/config
+/static/rain.jpg
+/static/sun.jpg

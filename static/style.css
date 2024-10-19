@@ -4,6 +4,7 @@ body {
     font-family: 'Arial', sans-serif;
     background-color: #f0f0f0;
     color: #333;
+    padding-bottom: 60px; /* Space for the footer */
 }
 
 header {
@@ -21,7 +22,6 @@ header {
     justify-content: space-evenly;
     gap: 20px;
     padding: 20px;
-    max-width: 1200px;
     margin: 0 auto;
     flex-wrap: wrap;
 }
@@ -69,19 +69,29 @@ footer {
     width: 100%;
 }
 
-#bbcNewsList {
+
+
+
+
+
+#newsList {
     list-style-type: none;
     padding: 0;
 }
-#bbcNewsList li {
+#newsList li {
     margin: 5px 0;
 }
-#bbcNewsList a {
+#newsList a {
     text-decoration: none;
     color: #3f51b5;
 }
-#bbcNewsList a:hover {
+#newsList a:hover {
     text-decoration: underline;
+}
+
+#weatherInfo img {
+    width: 40%;
+    height: auto;
 }
 
 #gone-pub {
@@ -95,32 +105,145 @@ footer {
     text-align: center;
 }
 
-#departuresTable {
+#departuresInfo {
+    background-color: #333; /* Dark background for the flip board */
+    color: #f5e216; /* White text */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    font-family: 'Courier New', Courier, monospace; /* Monospace font for classic feel */
+    max-width: 600px; /* Set max width for better layout */
+    margin: 20px auto; /* Center the box */
+    position: relative; /* For positioning effects */
+}
+
+#departuresInfo h2 {
+    text-align: center;
+    font-size: 1.5em; /* Slightly larger font for title */
+    margin-bottom: 20px; /* Space below title */
+}
+
+#departuresList {
+    list-style-type: none; /* Remove default list styling */
+    padding: 0; /* Remove padding */
+}
+
+#departuresList li {
+    background-color: #222; /* Dark background for items */
+    border-radius: 4px; /* Round corners */
+    padding: 10px;
+    margin: 5px 0; /* Space between items */
+    font-size: 1.5em; /* Larger font for items */
+    position: relative; /* For flip effect */
+    overflow: hidden; /* Hide overflow for the flip effect */
+    transform: perspective(600px); /* Perspective for the flip */
+    transition: transform 0.5s; /* Smooth transition for flip */
+}
+
+#departuresList li.flip {
+    transform: rotateY(180deg); /* Flip effect */
+}
+
+/* Add this for the text appearance to mimic flip board */
+.departure-time,
+.destination,
+.status {
+    display: inline-block; /* Inline-block for layout */
+    width: 30%; /* Set widths to space elements */
+    text-align: center; /* Center text */
+    color: #f5e216; /* White text for clarity */
+}
+
+.destination {
+    width: 40%; /* Wider space for destination */
+}
+
+.status {
+    width: 30%; /* Flexible width for status */
+}
+
+/* Animation effect */
+@keyframes flipIn {
+    0% {
+        transform: rotateY(-180deg);
+        opacity: 0;
+    }
+    100% {
+        transform: rotateY(0);
+        opacity: 1;
+    }
+}
+
+.loading {
+    font-size: 1.2em; /* Slightly larger font for loading */
+    animation: flipIn 1s forwards; /* Animation for loading */
+}
+
+
+#trainDepartures {
+    font-family: 'Arial', sans-serif;
+    background-color: #222;
+    color: white;
+    margin: 0;
+    padding: 20px;
+}
+
+#trainDepartures h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+#trainDepartures h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+#trainDepartures table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
+    margin-top: 20px;
+    font-size: 0.9em;
 }
 
-#departuresTable th,
-#departuresTable td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    font-size: 16px;
+#trainDepartures thead th {
+    background-color: #444;
+    color: #ffd700;
+    padding: 12px;
+    text-align: center;
+    font-weight: bold;
+    border-bottom: 2px solid #ffd700;
 }
 
-#departuresTable th {
-    background-color: #f2f2f2;
-    color: #333;
+#trainDepartures tbody tr {
+    border-bottom: 1px solid #555;
 }
 
-#departuresTable tr:nth-child(even) {
-    background-color: #f9f9f9;
+#trainDepartures tbody tr:nth-child(even) {
+    background-color: #333;
 }
 
-#departuresTable tr:hover {
-    background-color: #eaeaea;
+#trainDepartures td {
+    padding: 12px;
+    text-align: center;
 }
 
-#departuresTable td {
-    text-align: left;
+/* Platform column emphasized */
+#trainDepartures td:nth-child(4) {
+    font-weight: bold;
+    color: #ffd700;
+}
+
+/* Operator column styling */
+#trainDepartures td:nth-child(5) {
+    font-style: italic;
+    color: #bbb;
+}
+
+#trainDepartures p {
+    text-align: center;
+    font-size: 1.5em;
+    margin-top: 40px;
+    color: #ccc;
 }

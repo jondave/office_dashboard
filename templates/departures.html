@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Departures</title>
+    <style>
+        /* General Reset */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #222;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+
+        thead th {
+            background-color: #444;
+            color: #ffd700;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #555;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #333;
+        }
+
+        td {
+            padding: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* Limit width for Destination column */
+        td:nth-child(2) {
+            max-width: 200px; /* Set max width */
+            overflow: hidden; /* Hide overflow */
+            white-space: nowrap; /* Prevent wrapping */
+            text-overflow: ellipsis; /* Show ellipsis for overflow */
+        }
+
+        /* Platform column emphasized */
+        td:nth-child(4) {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        /* Operator column styling */
+        td:nth-child(5) {
+            font-style: italic;
+            color: #bbb;
+        }
+
+        /* Scrolling text styling */
+        .scroll-container {
+            position: relative;
+            overflow: hidden;
+            height: 30px; /* Adjust height as needed */
+            white-space: nowrap; /* Prevent line breaks */
+            width: 100%; /* Ensure full width */
+        }
+
+        .scroll-text {
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        /* Animation for scrolling */
+        @keyframes scroll {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(-100%);
+            }
+        }
+
+        p {
+            text-align: center;
+            font-size: 1.5em;
+            margin-top: 40px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Train Departures from {{ departure_station_name }}</h1>
+
+    <table id="trainSchedule">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Destination</th>
+                <th>Platform</th>
+                <th>Expected</th>
+                <th>Operator</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for departure in departure_data %}
+            <tr>
+                <td>{{ departure.std }}</td>
+                <td>
+                    {{ departure.destination_name }}
+                    {% if departure.intermediate_destinations | length > 1 %}
+                    <div class="scroll-container">
+                        <div class="scroll-text" id="scroll-{{ loop.index }}">
+                            Calling at: 
+                            {% for station, time in departure.intermediate_destinations %}
+                                {{ station }} ({{ time }}){% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </td>
+                <td>{{ departure.platform }}</td>
+                <td>{{ departure.etd }}</td>
+                <td>{{ departure.operator }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if departure_data|length == 0 %}
+        <p>No departures available at this time.</p>
+    {% endif %}
+
+    <script>
+        document.querySelectorAll('.scroll-text').forEach(scrollText => {
+            const textWidth = scrollText.offsetWidth;
+            const containerWidth = scrollText.parentElement.offsetWidth;
+
+            // Calculate the animation duration based on text width
+            const duration = (textWidth + containerWidth) / 50; // Adjust speed here (50 can be changed)
+            scrollText.style.animation = `scroll ${duration}s linear infinite`;
+
+            // Set the animation keyframes dynamically
+            const styleSheet = document.styleSheets[0];
+            styleSheet.insertRule(`@keyframes scroll {
+                from { transform: translateX(100%); }
+                to { transform: translateX(-100%); }
+            }`, styleSheet.cssRules.length);
+        });
+    </script>
+</body>
+</html>
