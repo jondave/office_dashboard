@@ -94,6 +94,13 @@ footer {
     height: auto;
 }
 
+.weather_icon {
+    max-width: 100px;
+    height: auto;
+}
+
+weather
+
 #gone-pub {
     background-color: #ff9b71;
     border-radius: 8px;
@@ -197,7 +204,7 @@ footer {
 #trainDepartures h2 {
     text-align: center;
     margin-bottom: 20px;
-    font-size: 1.3em;
+    font-size: 1.5em;
 }
 
 #trainDepartures table {
@@ -246,4 +253,16 @@ footer {
     font-size: 1.5em;
     margin-top: 40px;
     color: #ccc;
+}
+
+#map_bus {
+    height: 80%; /* 80% of the parent container height */
+    width: 100%; /* Full width */
+    min-height: 300px; /* Minimum height for usability */
+    max-height: 600px; /* Optional max height */
+}
+
+.bus_map_container {
+    background-color: #014785;
+    color: white;
 }

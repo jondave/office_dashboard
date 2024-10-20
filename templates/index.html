@@ -8,6 +8,9 @@
     <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -43,7 +46,7 @@
     </div>
 
     <div class="info">
-        <h2>Latest BBC News</h2>
+        <h2>News</h2>
         <ul id="newsList"></ul>
     </div>
 
@@ -55,13 +58,21 @@
     </div> -->
 
     <div class="info" id="weatherInfo">
-        <h2>Weather Information</h2>
+        <h2>Weather</h2>
         <p>Loading weather data...</p>
     </div>
+</div>
 
+<div class="info-container">
     <div class="info" id="trainDepartures">
         <h2>Train Departures</h2>
         <p>Loading departures...</p>
+    </div>
+
+    
+    <div class="info bus_map_container">
+        <h2>Live Busses</h2>
+        <div id="map_bus"></div>
     </div>
 </div>
 
@@ -178,8 +189,13 @@
                 }
 
                 // Check if the weather ID is 800 clear sky
-                const additionalImage = data.id === 800 ? 
-                    '<img src="{{ url_for('static', filename='sun.jpg') }}" alt="${data.description}" />' : '';
+                let additionalImage;
+
+                if (data.id === 800 || data.id === 801) {
+                    additionalImage = '<img src="{{ url_for('static', filename='sun.jpg') }}" alt="${data.description}" />';
+                } else {
+                    additionalImage = '<img src="{{ url_for('static', filename='rain.jpg') }}" alt="${data.description}" />';
+                }
 
                 // <h2>Weather Information</h2>
                 // <p>Temperature: ${data.temperature} °C</p>
@@ -187,10 +203,10 @@
                 //<img src="http://openweathermap.org/img/wn/${data.icon}.png" alt="${data.description}" />
 
                 weatherInfo.innerHTML = `
-                    <h2>Weather Information</h2>
+                    <h2>Weather</h2>
                     <p>${data.temperature} °C - ${data.description}</p>
+                    <img src="http://openweathermap.org/img/wn/${data.icon}.png" alt="${data.description}" class="weather_icon" />
                     <h2>Rob Forecast</h2>
-                    <img src="{{ url_for('static', filename='rain.jpg') }}" alt="${data.description}" />
                     ${additionalImage}
                 `;
             })
@@ -233,7 +249,7 @@
                 }
 
                 let departuresHtml = `
-                    <h2>Train Departures from ${data.station_name}</h2>
+                    <h2>${data.station_name} Departures</h2>
                     <table id="trainSchedule">
                     <thead>
                         <tr>
@@ -264,8 +280,8 @@
             .catch(error => console.error('Error fetching departures:', error));
     }
 
-    // Load train departures every 10 minutes (600,000 milliseconds)
-    setInterval(() => loadTrainDepartures('LCN'), 600000);
+    // Load train departures every 30 seconds
+    setInterval(() => loadTrainDepartures('LCN'), 30000);
     loadTrainDepartures('LCN'); // Initial load
 
     // function loadDepartures() {
@@ -294,6 +310,69 @@
     // // Load the departures on page load
     // setInterval(loadDepartures, 60000);
     // loadDepartures();
+    
+    // Initialize the bus map
+    const map = L.map('map_bus').setView([53.22661638788088, -0.5430025089888347], 15);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Create a custom bus icon
+    const busIcon = L.icon({
+        iconUrl: '{{ url_for('static', filename='bus_icon.svg') }}',  // Change this to your bus icon URL
+        iconSize: [30, 30],  // Size of the icon
+        iconAnchor: [15, 30],  // Point of the icon which will correspond to marker's location
+        popupAnchor: [0, -30]  // Point from which the popup should open relative to the iconAnchor
+    });
+
+    // Function to fetch GeoJSON data and update the map
+    function updateMap() {
+        fetch('/bus_data')
+            .then(response => response.json())
+            .then(geojsonData => {
+                // Clear existing layers
+                map.eachLayer(function (layer) {
+                    if (layer instanceof L.GeoJSON) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                // Add new GeoJSON layer to the map
+                L.geoJSON(geojsonData, {
+                    pointToLayer: function (feature, latlng) {
+                        const marker = L.marker(latlng, { icon: busIcon });
+                        // Bind tooltip with bus line number above the icon
+                        marker.bindTooltip(`${feature.properties.lineRef}`, {
+                            permanent: true,  // Tooltip will always be visible
+                            direction: 'top',  // Position the tooltip above the marker
+                            offset: [0, -30],  // Move tooltip 40 pixels above the marker
+                            className: 'bus_map_tooltip'  // Custom class for styling
+                        }).openTooltip();  // Optional: Open the tooltip on load
+                        return marker;
+                    },
+                    onEachFeature: function (feature, layer) {
+                        layer.bindPopup(`<strong>Destination:</strong> ${feature.properties.destinationName}<br>
+                                        <strong>Origin:</strong> ${feature.properties.originName}<br>
+                                        <strong>Line:</strong> ${feature.properties.lineRef}<br>
+                                        <strong>Vehicle:</strong> ${feature.properties.vehicleRef}<br>
+                                        <strong>Operator:</strong> ${feature.properties.operatorRef}<br>
+                                        <strong>Time Data Received:</strong> ${feature.properties.recordedAtTime}`);
+                    }
+                }).addTo(map);
+            })
+            .catch(error => {
+                console.error('Error fetching GeoJSON data:', error);
+            });
+    }
+
+    // Initial call to load the map data
+    updateMap();
+
+    // Update the map every 30 seconds
+    setInterval(updateMap, 30000);
 
 </script>
 

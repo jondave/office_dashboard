@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Map with Bus Data</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #map_bus {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Leaflet Map with Bus Data</h1>
+    <div id="map_bus"></div>
+
+    <script>
+        // Initialize the bus map
+        const map = L.map('map_bus').setView([53.22661638788088, -0.5430025089888347], 15);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Create a custom bus icon
+    const busIcon = L.icon({
+        iconUrl: '{{ url_for('static', filename='bus_icon.svg') }}',  // Change this to your bus icon URL
+        iconSize: [30, 30],  // Size of the icon
+        iconAnchor: [15, 30],  // Point of the icon which will correspond to marker's location
+        popupAnchor: [0, -30]  // Point from which the popup should open relative to the iconAnchor
+    });
+
+    // Function to fetch GeoJSON data and update the map
+    function updateMap() {
+        fetch('/bus_data')
+            .then(response => response.json())
+            .then(geojsonData => {
+                // Clear existing layers
+                map.eachLayer(function (layer) {
+                    if (layer instanceof L.GeoJSON) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                // Add new GeoJSON layer to the map
+                L.geoJSON(geojsonData, {
+                    pointToLayer: function (feature, latlng) {
+                        const marker = L.marker(latlng, { icon: busIcon });
+                        // Bind tooltip with bus line number above the icon
+                        marker.bindTooltip(`${feature.properties.lineRef}`, {
+                            permanent: true,  // Tooltip will always be visible
+                            direction: 'top',  // Position the tooltip above the marker
+                            offset: [0, -30],  // Move tooltip 40 pixels above the marker
+                            className: 'bus_map_tooltip'  // Custom class for styling
+                        }).openTooltip();  // Optional: Open the tooltip on load
+                        return marker;
+                    },
+                    onEachFeature: function (feature, layer) {
+                        layer.bindPopup(`<strong>Destination:</strong> ${feature.properties.destinationName}<br>
+                                        <strong>Origin:</strong> ${feature.properties.originName}<br>
+                                        <strong>Line:</strong> ${feature.properties.lineRef}<br>
+                                        <strong>Vehicle:</strong> ${feature.properties.vehicleRef}<br>
+                                        <strong>Operator:</strong> ${feature.properties.operatorRef}<br>
+                                        <strong>Time Data Received:</strong> ${feature.properties.recordedAtTime}`);
+                    }
+                }).addTo(map);
+            })
+            .catch(error => {
+                console.error('Error fetching GeoJSON data:', error);
+            });
+    }
+
+    // Initial call to load the map data
+    updateMap();
+
+    // Update the map every 10 minutes (600000 milliseconds)
+    setInterval(updateMap, 600000);
+    </script>
+</body>
+</html>
