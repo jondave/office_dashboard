@@ -11,7 +11,7 @@ header {
     background-color: #3f51b5;
     color: white;
     text-align: center;
-    padding: 15px 0;
+    padding: 5px 0;
     font-size: 2em;
     font-weight: bold;
     margin-bottom: 10px;
@@ -21,7 +21,7 @@ header {
     display: flex;
     justify-content: space-evenly;
     gap: 20px;
-    padding: 20px;
+    padding: 5px;
     margin: 0 auto;
     flex-wrap: wrap;
 }
@@ -41,12 +41,28 @@ header {
     margin: 10px 0;
 }
 
+/* .macice-status p {
+    font-size: 12pt;
+} */
+
+.mcice-bad {
+    color: crimson;
+}
+
+.mcice-unknown {
+    color: purple;
+}
+
+.mcice-good {
+    color: lime;
+}
+
 .container {
     display: flex;
     justify-content: space-evenly;
     flex-wrap: wrap;
     gap: 20px;
-    padding: 20px;
+    padding: 5px;
     box-sizing: border-box;
 }
 
@@ -61,47 +77,54 @@ header {
 
 footer {
     text-align: center;
-    padding: 10px;
+    padding: 5px;
     background-color: #3f51b5;
     color: white;
     position: fixed;
     bottom: 0;
     width: 100%;
+    z-index: 9999;
 }
 
 
 
 
-
-
-#newsList {
-    list-style-type: none;
-    padding: 0;
-}
-#newsList li {
-    margin: 5px 0;
-}
-#newsList a {
-    text-decoration: none;
-    color: #3f51b5;
-}
-#newsList a:hover {
-    text-decoration: underline;
+.dashboard {
+    background-color: #3f51b5;
+    color: white;    
 }
 
-#weatherInfo img {
-    width: 40%;
-    height: auto;
+.weather-container {
+    display: grid;
+    grid-template-columns: 1fr auto; /* Left takes remaining space, right content is auto-sized */
+    align-items: center; /* Vertically align content */
+    gap: 20px; /* Space between the left and right content */
 }
 
 .weather_icon {
-    max-width: 100px;
-    height: auto;
+    vertical-align: middle;
+    height: 50px; /* Adjust size if needed */
 }
 
-weather
+.rob_forecast_image {
+    border-radius: 100%;
+    height: 70%;
+    max-width: 200px;
+}
 
 #gone-pub {
+    background-color: #ff9b71;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#gone-lunch {
+    background-color: #ff9b71;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#gone-home {
     background-color: #ff9b71;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -161,6 +184,7 @@ weather
     color: #f5e216; /* White text for clarity */
 }
 
+
 .destination {
     width: 40%; /* Wider space for destination */
 }
@@ -192,13 +216,13 @@ weather
     background-color: #222;
     color: white;
     margin: 0;
-    padding: 20px;
+    padding: auto;
 }
 
 #trainDepartures h1 {
     text-align: center;
     margin-bottom: 20px;
-    font-size: 2em;
+    font-size: 2.5em;
 }
 
 #trainDepartures h2 {
@@ -211,7 +235,7 @@ weather
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
-    font-size: 0.9em;
+    font-size: 1.1em;
 }
 
 #trainDepartures thead th {
@@ -265,4 +289,73 @@ weather
 .bus_map_container {
     background-color: #014785;
     color: white;
+}
+
+
+
+
+
+/* Ticker Container */
+.news-ticker {
+    display: flex;
+    align-items: center;
+    background-color: #b80000; /* BBC Red */
+    padding: 5px 10px;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden; /* Ensure overflow is hidden */
+}
+
+/* "News" Header */
+.news-ticker h2 {
+    margin: 0 15px 0 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+/* Ticker Wrapper */
+.ticker-wrap {
+    overflow: hidden; /* Hide overflow to create a smooth ticker */
+    white-space: nowrap;
+    width: 100%; /* Takes the remaining space */
+}
+
+/* News List */
+#newsList {
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    animation: scroll 600s linear infinite; /* Smooth horizontal scrolling */
+    position: relative; /* Position relative for absolute children */
+}
+
+/* List Items */
+#newsList li {
+    display: inline-block;
+    padding: 0 30px; /* Space between items */
+    font-size: 1.5rem;
+    font-weight: normal;
+}
+
+/* Hyperlinks */
+#newsList a {
+    color: white;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+#newsList a:hover {
+    color: #ffcccb; /* Light hover effect */
+}
+
+/* Scrolling Animation */
+@keyframes scroll {
+    0% {
+        transform: translateX(0); /* Start from 0 */
+    }
+    100% {
+        transform: translateX(-100%); /* Move completely out of view */
+    }
 }

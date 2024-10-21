@@ -1,5 +1,5 @@
 # Don't include venv stuff
 .patch
 /config
-/static/rain.jpg
-/static/sun.jpg
+/static/rob_weather
+sensor_data.csv

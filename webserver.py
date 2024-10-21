@@ -1,4 +1,8 @@
-from flask import Flask, render_template, jsonify
+# TODO: Create seperate log files for each day to reduce load time
+# TODO: Auto swap the log time on day change
+# TODO: Display only the current day's data in the graphs
+
+from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit
 import threading
 import time
@@ -9,12 +13,16 @@ import os
 import socket
 import requests
 import json
+import signal
 from xml.etree import ElementTree as ET
 from lxml import etree
 import pyttsx3
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+
+# Define a shutdown flag to signal the thread to stop
+shutdown_flag = threading.Event()
 
 # Lists to store temperature, humidity, and timestamps for plotting
 temperature_data = []
@@ -31,6 +39,8 @@ PORT = 5001
 
 # API endpoints and keys
 BBC_RSS_FEED = "http://feeds.bbci.co.uk/news/rss.xml"
+ONION_RSS_FEED = "https://www.theonion.com/rss"
+DAILY_MASH_RSS_FEED = "https://www.thedailymash.co.uk/feed"
 WEATHER_URL = "http://api.openweathermap.org/data/2.5/weather"
 AIRPORT_CODE = "HUY"
 FLIGHT_API_URL = "http://api.aviationstack.com/v1/flights"
@@ -121,26 +131,52 @@ def calculate_5_day_average():
 
 # Function to receive data from the socket connection
 def receive_socket_data():
-    s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    """Function to receive data from the internal socket connection."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Allow socket reuse
     s.bind((HOST, PORT))
     s.listen()
 
     print(f"Listening on {HOST}:{PORT} for serial data...")
 
-    conn, addr = s.accept()
-    with conn:
-        print(f"Connected by {addr}")
-        while True:
+    while not shutdown_flag.is_set():
+        try:
+            # Wait for a client connection
+            # print("Waiting for client to connect...")
+            s.settimeout(1.0)  # Timeout to check shutdown flag
             try:
-                data = conn.recv(1024)
-                if not data:
-                    break
-                # Parse received data (temperature, humidity)
-                temp_value, humidity_value = data.decode('utf-8').strip().split(',')
-                log_and_send_data(float(temp_value), float(humidity_value))
-            except Exception as e:
-                print(f"Error receiving socket data: {e}")
+                conn, addr = s.accept()
+                print(f"Connected by {addr}")
+                with conn:
+                    while not shutdown_flag.is_set():
+                        try:
+                            conn.settimeout(1.0)  # Set timeout to avoid blocking
+                            data = conn.recv(1024)
+                            if not data:
+                                print("Connection lost. Waiting for reconnection...")
+                                break  # Client disconnected, retry to accept a new connection
+                            
+                            # Parse received data (temperature, humidity)
+                            temp_value, humidity_value = data.decode('utf-8').strip().split(',')
+                            log_and_send_data(float(temp_value), float(humidity_value))
+
+                        except socket.timeout:
+                            # Timeout allows the loop to check shutdown_flag regularly
+                            continue
+
+                        except Exception as e:
+                            print(f"Error receiving socket data: {e}")
+                            break
+            except socket.timeout:
+                # No client connected yet, retry after timeout
+                continue
+
+        except Exception as e:
+            print(f"Error with socket server: {e}")
+            time.sleep(1)  # Wait a moment before retrying in case of an error
+    
+    s.close()
+    print("Socket server closed.")
 
 # Route to serve the main webpage
 @app.route('/')
@@ -151,21 +187,31 @@ def home():
 @app.route('/news')
 def news():
     try:
-        # Fetch the BBC feed
-        bbc_response = requests.get(BBC_RSS_FEED)
-        bbc_response.raise_for_status()
-
-        # Parse the RSS feed
-        bbc_root = ET.fromstring(bbc_response.content)
-        bbc_items = bbc_root.findall(".//item")[:10]  # Get the latest 5 articles
         news = []
 
-        for item in bbc_items:
-            title = item.find("title").text 
+        # Function to fetch and parse RSS feed
+        def fetch_rss(url):
+            response = requests.get(url)
+            response.raise_for_status()  # Raise exception for bad response
+            root = ET.fromstring(response.content)
+            return root.findall(".//item")[:6]  # Get latest 6 articles
+
+        # Fetch articles from both RSS feeds
+        bbc_items = fetch_rss(BBC_RSS_FEED)
+        onion_items = fetch_rss(ONION_RSS_FEED)
+        mash_items = fetch_rss(DAILY_MASH_RSS_FEED)
+
+        # Extract and combine articles from all sources
+        for item in bbc_items + onion_items + mash_items:
+            title = item.find("title").text
             link = item.find("link").text
             news.append({"title": title, "link": link})
 
+        # Shuffle the combined list to mix news randomly
+        random.shuffle(news)
+
         return jsonify(news)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -408,14 +454,17 @@ def speak_first_train(departure_data):
         engine.say(speech_text)
         engine.runAndWait()
 
-@app.route('/map')
-def map():
-    return render_template('map.html')
+@app.route('/bus_map')
+def bus_map():
+    return render_template('bus_map.html')
 
 @app.route('/bus_data')
 def bus_data():
-    url_pc_coaches = "https://data.bus-data.dft.gov.uk/api/v1/datafeed/7861/?api_key=" + OPEN_BUS_DATA_API_KEY
-    url_stagecoach_east_midlands = "https://data.bus-data.dft.gov.uk/api/v1/datafeed/7035/?api_key=" + OPEN_BUS_DATA_API_KEY
+    # Define the bounding box coordinates [minLongitude, minLatitude, maxLongitude, maxLatitude]
+    bounding_box = "-0.60,53.20,-0.47,53.28"
+
+    url_pc_coaches = "https://data.bus-data.dft.gov.uk/api/v1/datafeed/7861/?api_key=" + OPEN_BUS_DATA_API_KEY + "&boundingBox=" + bounding_box
+    url_stagecoach_east_midlands = "https://data.bus-data.dft.gov.uk/api/v1/datafeed/7035/?api_key=" + OPEN_BUS_DATA_API_KEY + "&boundingBox=" + bounding_box
 
     response_pc_coaches = requests.get(url_pc_coaches)
     response_stagecoach_east_midlands = requests.get(url_stagecoach_east_midlands)
@@ -434,8 +483,6 @@ def bus_data():
 
 def vehicle_data_xml_to_geojson(xml_data):
     """Convert the XML vehicle data to GeoJSON format."""
-    print("xml_data")
-    print(xml_data)
     root = ET.fromstring(xml_data)
     namespace = {"siri": "http://www.siri.org.uk/siri"}
     
@@ -444,6 +491,10 @@ def vehicle_data_xml_to_geojson(xml_data):
         location = vehicle.find(".//siri:VehicleLocation", namespace)
         longitude = float(location.find("siri:Longitude", namespace).text)
         latitude = float(location.find("siri:Latitude", namespace).text)
+
+        # Extract recorded time and format it
+        recorded_time = vehicle.find(".//siri:RecordedAtTime", namespace).text
+        formatted_time = format_time(recorded_time)
 
         # Build GeoJSON feature
         feature = {
@@ -457,8 +508,8 @@ def vehicle_data_xml_to_geojson(xml_data):
                 "lineRef": vehicle.find(".//siri:LineRef", namespace).text,
                 "originName": vehicle.find(".//siri:OriginName", namespace).text,
                 "destinationName": vehicle.find(".//siri:DestinationName", namespace).text,
-                "recordedAtTime": vehicle.find(".//siri:RecordedAtTime", namespace).text,
-                "operatorRef": vehicle.find(".//siri:OperatorRef", namespace).text
+                "operatorRef": vehicle.find(".//siri:OperatorRef", namespace).text,
+                "recordedAtTime": formatted_time
             }
         }
 
@@ -466,6 +517,11 @@ def vehicle_data_xml_to_geojson(xml_data):
 
     geojson = {"type": "FeatureCollection", "features": features}
     return geojson
+
+def format_time(iso_time):
+    """Convert ISO 8601 time to a more readable format."""
+    dt = datetime.datetime.fromisoformat(iso_time)
+    return dt.strftime('%d %b %Y, %I:%M %p')  # Example: 21 Oct 2024, 08:53 AM
 
 # Generate a random time between two given times
 def random_time_between(start, end):
@@ -484,14 +540,36 @@ def handle_connect():
         'humidity_data': humidity_data
     })
 
-if __name__ == '__main__':
-    # Load historical data from the CSV file when the server starts
-    load_data_from_csv()
+def shutdown_gracefull(signum, frame):
+    """Signal handler to stop the socket thread and clean up."""
+    print("Shutdown signal received. Stopping socket thread and Flask server...")
+    
+    # Stop the socket thread
+    shutdown_flag.set()
+    if socket_thread.is_alive():
+        socket_thread.join()
+    print("Socket thread stopped.")
+    
+    # Forcefully stop the Flask-SocketIO server
+    os._exit(0)  # Forcefully exit the Flask application
 
+
+# Register signal handlers for SIGINT and SIGTERM
+signal.signal(signal.SIGINT, shutdown_gracefull)
+signal.signal(signal.SIGTERM, shutdown_gracefull)
+
+if __name__ == '__main__':
+
+    # Load historical data from the CSV file when the server starts
+    # load_data_from_csv()
+
+    print("Socket Thead Starting")
     # Start a background thread to receive data from the internal socket
     socket_thread = threading.Thread(target=receive_socket_data)
     socket_thread.daemon = True
     socket_thread.start()
 
+
+    print("Flask App Starting")
     # Start the Flask-SocketIO server
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)

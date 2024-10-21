@@ -61,12 +61,14 @@
                         return marker;
                     },
                     onEachFeature: function (feature, layer) {
-                        layer.bindPopup(`<strong>Destination:</strong> ${feature.properties.destinationName}<br>
-                                        <strong>Origin:</strong> ${feature.properties.originName}<br>
-                                        <strong>Line:</strong> ${feature.properties.lineRef}<br>
+                        layer.bindPopup(`
+                                        <strong>Route:</strong> ${feature.properties.lineRef}<br>
+                                        <strong>Destination:</strong> ${feature.properties.destinationName}<br>
+                                        <!--<strong>Origin:</strong> ${feature.properties.originName}<br>
                                         <strong>Vehicle:</strong> ${feature.properties.vehicleRef}<br>
-                                        <strong>Operator:</strong> ${feature.properties.operatorRef}<br>
-                                        <strong>Time Data Received:</strong> ${feature.properties.recordedAtTime}`);
+                                        <strong>Operator:</strong> ${feature.properties.operatorRef}<br>-->
+                                        <strong>Data Received:</strong> ${feature.properties.recordedAtTime}
+                                        `);
                     }
                 }).addTo(map);
             })
